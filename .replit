@@ -1,4 +1,4 @@
-run = ["cargo", "run"]
+run = ["cargo", "build"]
 hidden = ["target"]
 
 entrypoint = "src/main.rs"
