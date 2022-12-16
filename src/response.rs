@@ -36,6 +36,7 @@ impl serde::Serialize for EvalResponse {
 	}
 }
 
+#[derive(PartialEq, Debug)]
 pub enum Value {
 	Null,
 	Number(f64),
@@ -72,7 +73,7 @@ impl serde::Serialize for Value {
 	}
 }
 
-#[derive(PartialEq, Eq, Hash, Clone)]
+#[derive(PartialEq, Eq, Hash, Clone, Debug)]
 pub struct Reference(pub String);
 
 impl serde::Serialize for Reference {
@@ -84,12 +85,12 @@ impl serde::Serialize for Reference {
 	}
 }
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, PartialEq, Debug)]
 pub struct Object {
 	pub members: Vec<ObjectMember>,
 }
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, PartialEq, Debug)]
 pub struct ObjectMember {
 	pub key:   Value,
 	pub value: Value,

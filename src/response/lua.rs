@@ -59,3 +59,61 @@ fn conv_value<'lua>(
 		_ => todo!(),
 	})
 }
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[rstest::fixture]
+	fn lua() -> rlua::Lua {
+		rlua::Lua::new()
+	}
+
+	fn no_objects() -> HashMap<Reference, Object> {
+		HashMap::new()
+	}
+
+	fn ref_x() -> Reference {
+		Reference("x".to_string())
+	}
+
+	#[rstest::rstest]
+	#[case("nil", no_objects(), Value::Null)]
+	#[case("1", no_objects(), Value::Number(1.0))]
+	#[case("1.1", no_objects(), Value::Number(1.1))]
+	#[case(r#""hello, world!""#, no_objects(), Value::String("hello, world!".to_string()))]
+	#[case(r#"x = {}; return x"#, HashMap::from([(ref_x(), Object { members: vec![] })]), Value::ObjectRef(ref_x()))]
+	#[case(r#"x = {'foo': 2, 'bar': nil}; return x"#, HashMap::from([(ref_x(), Object { members: vec![
+		ObjectMember {
+			key: Value::String("foo".to_string()),
+			value: Value::Number(2.0),
+		},
+		ObjectMember {
+			key: Value::String("bar".to_string()),
+			value: Value::Null,
+		}
+	] })]), Value::ObjectRef(ref_x()))]
+	fn eval(
+		lua: rlua::Lua,
+		#[case] input: &str,
+		#[case] expect_objects: HashMap<Reference, Object>,
+		#[case] expect_value: Value,
+	) {
+		let response = lua.context(|ctx| match ctx.load(input).eval::<rlua::Value>() {
+			Ok(result) => EvalResponse::from_lua(ctx, result),
+			Err(error) => panic!("can't execute: `{error}`"),
+		});
+
+		let (actual_objects, actual_value) = match response {
+			EvalResponse::Success { objects, value } => (objects, value),
+			EvalResponse::Failure { error } => panic!("can't convert: `{error}`"),
+		};
+		assert_eq!(actual_objects.len(), expect_objects.len());
+
+		if let Value::ObjectRef(original_name) = expect_value {
+			todo!()
+		} else {
+			assert_eq!(actual_value, expect_value);
+		}
+	}
+}
