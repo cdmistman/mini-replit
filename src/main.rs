@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate tracing;
+
 mod request;
 mod response;
 mod session;
@@ -9,6 +12,7 @@ use actix_web::web;
 use actix_web::App;
 use actix_web::HttpServer;
 use rlua::Lua;
+use tracing_subscriber::util::SubscriberInitExt;
 use uuid::Uuid;
 
 use self::request::EvalRequest;
@@ -18,16 +22,24 @@ use self::session::Sessions;
 
 #[actix_web::main]
 async fn main() -> Result<()> {
+	tracing_subscriber::FmtSubscriber::new().init();
+
 	let sessions = web::Data::new(Sessions::default());
 
-	HttpServer::new(move || App::new().app_data(sessions.clone()).service(eval))
-		.bind(("127.0.0.1", 8080))
-		.unwrap()
-		.run()
-		.await
+	HttpServer::new(move || {
+		App::new()
+			.app_data(sessions.clone())
+			.service(new_session)
+			.service(eval)
+	})
+	.bind(("127.0.0.1", 8080))
+	.unwrap()
+	.run()
+	.await
 }
 
 #[post("/new")]
+#[instrument]
 async fn new_session(sessions: web::Data<Sessions>) -> web::Json<String> {
 	let mut sessions = sessions.write().await;
 	let mut session_id = Uuid::new_v4().to_string();
@@ -35,10 +47,12 @@ async fn new_session(sessions: web::Data<Sessions>) -> web::Json<String> {
 		session_id = Uuid::new_v4().to_string();
 	}
 	sessions.insert(session_id.clone(), Default::default());
+	info!("assigning new session id {session_id}");
 	web::Json(session_id)
 }
 
 #[post("/eval/{session}/{lang}")]
+#[instrument]
 async fn eval(
 	path: web::Path<(String, String)>,
 	req: web::Json<EvalRequest>,
@@ -46,6 +60,7 @@ async fn eval(
 ) -> web::Json<EvalResponse> {
 	let session_id = path.0.as_str();
 	let lang = path.1.as_str();
+	info!("handling {lang} for {session_id}");
 	let response = match lang {
 		"lua" => {
 			let sessions = sessions.read().await;
