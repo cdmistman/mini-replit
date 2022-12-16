@@ -56,12 +56,14 @@ fn conv_value<'lua>(
 			stack.push((new_t_name.clone(), new_t));
 			Value::ObjectRef(new_t_name)
 		},
-		_ => todo!(),
+		v => return Err(format!("can't convert lua value `{v:?}`")),
 	})
 }
 
 #[cfg(test)]
 mod tests {
+	use std::hash::Hash;
+
 	use super::*;
 
 	#[rstest::fixture]
@@ -73,8 +75,8 @@ mod tests {
 		HashMap::new()
 	}
 
-	fn ref_x() -> Reference {
-		Reference("x".to_string())
+	fn reference(name: &str) -> Reference {
+		Reference(name.to_string())
 	}
 
 	#[rstest::rstest]
@@ -82,8 +84,8 @@ mod tests {
 	#[case("1", no_objects(), Value::Number(1.0))]
 	#[case("1.1", no_objects(), Value::Number(1.1))]
 	#[case(r#""hello, world!""#, no_objects(), Value::String("hello, world!".to_string()))]
-	#[case(r#"x = {}; return x"#, HashMap::from([(ref_x(), Object { members: vec![] })]), Value::ObjectRef(ref_x()))]
-	#[case(r#"x = {'foo': 2, 'bar': nil}; return x"#, HashMap::from([(ref_x(), Object { members: vec![
+	#[case(r#"x = {}; return x"#, HashMap::from([(reference("x"), Object { members: vec![] })]), Value::ObjectRef(reference("x")))]
+	#[case(r#"x = {'foo': 2, 'bar': nil}; return x"#, HashMap::from([(reference("x"), Object { members: vec![
 		ObjectMember {
 			key: Value::String("foo".to_string()),
 			value: Value::Number(2.0),
@@ -92,7 +94,7 @@ mod tests {
 			key: Value::String("bar".to_string()),
 			value: Value::Null,
 		}
-	] })]), Value::ObjectRef(ref_x()))]
+	] })]), Value::ObjectRef(reference("x")))]
 	fn eval(
 		lua: rlua::Lua,
 		#[case] input: &str,
@@ -111,7 +113,13 @@ mod tests {
 		assert_eq!(actual_objects.len(), expect_objects.len());
 
 		if let Value::ObjectRef(original_name) = expect_value {
-			todo!()
+			// note: this is rather simple
+			let Value::ObjectRef(actual_name) = actual_value else {
+				panic!("expected an object to be the result");
+			};
+			let original_obj = &expect_objects[&original_name];
+			let actual_obj = &actual_objects[&actual_name];
+			assert_eq!(original_obj.members.len(), actual_obj.members.len());
 		} else {
 			assert_eq!(actual_value, expect_value);
 		}

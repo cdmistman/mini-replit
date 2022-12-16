@@ -85,12 +85,12 @@ impl serde::Serialize for Reference {
 	}
 }
 
-#[derive(serde::Serialize, PartialEq, Debug)]
+#[derive(serde::Serialize, Debug)]
 pub struct Object {
 	pub members: Vec<ObjectMember>,
 }
 
-#[derive(serde::Serialize, PartialEq, Debug)]
+#[derive(serde::Serialize, Debug)]
 pub struct ObjectMember {
 	pub key:   Value,
 	pub value: Value,
