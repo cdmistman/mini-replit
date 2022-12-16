@@ -1,11 +1,9 @@
-#[macro_use]
-extern crate actix_web;
-
 mod request;
 mod response;
 
 use std::io::Result;
 
+use actix_web::post;
 use actix_web::web;
 use actix_web::App;
 use actix_web::HttpServer;

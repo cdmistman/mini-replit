@@ -48,9 +48,24 @@ impl serde::Serialize for Value {
 	{
 		match self {
 			Value::Null => serializer.serialize_none(),
-			Value::Number(n) => serializer.serialize_f64(*n),
-			Value::String(s) => serializer.serialize_str(s.as_str()),
-			Value::ObjectRef(r) => r.serialize(serializer),
+			Value::Number(n) => {
+				let mut map = serializer.serialize_map(Some(2))?;
+				map.serialize_entry("kind", "number")?;
+				map.serialize_entry("value", n)?;
+				map.end()
+			},
+			Value::String(s) => {
+				let mut map = serializer.serialize_map(Some(2))?;
+				map.serialize_entry("kind", "string")?;
+				map.serialize_entry("value", s.as_str())?;
+				map.end()
+			},
+			Value::ObjectRef(r) => {
+				let mut map = serializer.serialize_map(Some(2))?;
+				map.serialize_entry("kind", "ref")?;
+				map.serialize_entry("value", r)?;
+				map.end()
+			},
 		}
 	}
 }
@@ -76,4 +91,66 @@ pub struct Object {
 pub struct ObjectMember {
 	key:   Value,
 	value: Value,
+}
+
+#[cfg(test)]
+mod tests {
+	use std::collections::HashMap;
+
+	use super::*;
+
+	#[rstest::rstest]
+	#[case(
+		EvalResponse::Failure {
+			error: "uh oh".to_string(),
+		},
+		r#"{"success":false,"error":"uh oh"}"#,
+	)]
+	#[case(
+		EvalResponse::Success {
+			objects: HashMap::new(),
+			value: Value::Null,
+		},
+		r#"{"success":true,"objects":{},"value":null}"#,
+	)]
+	#[case(
+		EvalResponse::Success {
+			objects: HashMap::from([
+				(Reference("01".to_string()), Object {
+					members: vec![]
+				})
+			]),
+			value: Value::ObjectRef(Reference("01".to_string()))
+		},
+		r#"{"success":true,"objects":{"01":{"members":[]}},"value":{"kind":"ref","value":"01"}}"#,
+	)]
+	// more complex test: mutually-recursive objects
+	// NOTE: serialization of the `objects` hashmap is inconsistent, so sometimes this test fails :/
+	#[case(
+		EvalResponse::Success {
+			objects: HashMap::from([
+				(Reference("x".to_string()), Object {
+					members: vec![
+						ObjectMember {
+							key: Value::ObjectRef(Reference("y".to_string())),
+							value: Value::ObjectRef(Reference("y".to_string())),
+						},
+					]
+				}),
+				(Reference("y".to_string()), Object {
+					members: vec![
+						ObjectMember {
+							key: Value::ObjectRef(Reference("x".to_string())),
+							value: Value::ObjectRef(Reference("x".to_string())),
+						}
+					]
+				})
+			]),
+			value: Value::ObjectRef(Reference("x".to_string())),
+		},
+		r#"{"success":true,"objects":{"y":{"members":[{"key":{"kind":"ref","value":"x"},"value":{"kind":"ref","value":"x"}}]},"x":{"members":[{"key":{"kind":"ref","value":"y"},"value":{"kind":"ref","value":"y"}}]}},"value":{"kind":"ref","value":"x"}}"#,
+	)]
+	fn test(#[case] input: EvalResponse, #[case] expect: &str) {
+		assert_eq!(serde_json::to_string(&input).unwrap().as_str(), expect)
+	}
 }
