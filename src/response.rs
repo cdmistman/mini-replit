@@ -1,3 +1,5 @@
+mod lua;
+
 use std::collections::HashMap;
 
 use serde::ser::SerializeMap;
@@ -70,7 +72,7 @@ impl serde::Serialize for Value {
 	}
 }
 
-#[derive(PartialEq, Eq, Hash)]
+#[derive(PartialEq, Eq, Hash, Clone)]
 pub struct Reference(pub String);
 
 impl serde::Serialize for Reference {
@@ -89,8 +91,8 @@ pub struct Object {
 
 #[derive(serde::Serialize)]
 pub struct ObjectMember {
-	key:   Value,
-	value: Value,
+	pub key:   Value,
+	pub value: Value,
 }
 
 #[cfg(test)]
