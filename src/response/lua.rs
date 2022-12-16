@@ -11,6 +11,9 @@ impl EvalResponse {
 			Err(error) => return EvalResponse::Failure { error },
 		};
 		while let Some((reference, table)) = stack.pop() {
+			if objects.contains_key(&reference) {
+				continue;
+			}
 			let mut members = Vec::new();
 			for table_entry in table.pairs::<rlua::Value, rlua::Value>() {
 				let (lua_key, lua_value) = match table_entry {
