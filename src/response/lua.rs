@@ -62,8 +62,6 @@ fn conv_value<'lua>(
 
 #[cfg(test)]
 mod tests {
-	use std::hash::Hash;
-
 	use super::*;
 
 	#[rstest::fixture]
