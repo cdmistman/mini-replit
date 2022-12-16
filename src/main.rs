@@ -1,9 +1,6 @@
 mod request;
 mod response;
 
-use std::collections::HashMap;
-use std::io::Error;
-use std::io::ErrorKind;
 use std::io::Result;
 
 use actix_web::post;
@@ -11,7 +8,6 @@ use actix_web::web;
 use actix_web::App;
 use actix_web::HttpServer;
 use rlua::Lua;
-use serde_json::to_string;
 
 use self::request::EvalRequest;
 use self::response::EvalResponse;
